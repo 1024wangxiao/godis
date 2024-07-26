@@ -2,17 +2,18 @@ package client
 
 import (
 	"errors"
-	"github.com/hdt3213/godis/interface/redis"
-	"github.com/hdt3213/godis/lib/logger"
-	"github.com/hdt3213/godis/lib/sync/wait"
-	"github.com/hdt3213/godis/redis/parser"
-	"github.com/hdt3213/godis/redis/protocol"
 	"net"
 	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hdt3213/godis/interface/redis"
+	"github.com/hdt3213/godis/lib/logger"
+	"github.com/hdt3213/godis/lib/sync/wait"
+	"github.com/hdt3213/godis/redis/parser"
+	"github.com/hdt3213/godis/redis/protocol"
 )
 
 const (
@@ -21,25 +22,25 @@ const (
 	closed
 )
 
-// Client is a pipeline mode redis client
+// 客户端结构定义，使用pipeline模式
 type Client struct {
-	conn        net.Conn
-	pendingReqs chan *request // wait to send
-	waitingReqs chan *request // waiting response
-	ticker      *time.Ticker
-	addr        string
+	conn        net.Conn      // TCP连接
+	pendingReqs chan *request // 等待发送的请求队列
+	waitingReqs chan *request // 等待响应的请求队列
+	ticker      *time.Ticker  // 定时器，用于定期发送心跳
+	addr        string        // Redis服务器地址
 
-	status  int32
-	working *sync.WaitGroup // its counter presents unfinished requests(pending and waiting)
+	status  int32           // 客户端状态
+	working *sync.WaitGroup // 用于跟踪未完成请求的同步等待组
 }
 
-// request is a message sends to redis server
+// 请求结构定义
 type request struct {
 	id        uint64
-	args      [][]byte
-	reply     redis.Reply
-	heartbeat bool
-	waiting   *wait.Wait
+	args      [][]byte    // 请求参数
+	reply     redis.Reply // 响应
+	heartbeat bool        // 是否为心跳请求
+	waiting   *wait.Wait  // 等待响应的同步机制
 	err       error
 }
 
@@ -48,7 +49,7 @@ const (
 	maxWait  = 3 * time.Second
 )
 
-// MakeClient creates a new client
+// 初始化客户端
 func MakeClient(addr string) (*Client, error) {
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
@@ -63,7 +64,7 @@ func MakeClient(addr string) (*Client, error) {
 	}, nil
 }
 
-// Start starts asynchronous goroutines
+// 启动客户端，初始化协程
 func (client *Client) Start() {
 	client.ticker = time.NewTicker(10 * time.Second)
 	go client.handleWrite()
@@ -72,7 +73,7 @@ func (client *Client) Start() {
 	atomic.StoreInt32(&client.status, running)
 }
 
-// Close stops asynchronous goroutines and close connection
+// 关闭客户端，停止协程和连接
 func (client *Client) Close() {
 	atomic.StoreInt32(&client.status, closed)
 	client.ticker.Stop()
@@ -87,6 +88,7 @@ func (client *Client) Close() {
 	close(client.waitingReqs)
 }
 
+// 自动重连机制
 func (client *Client) reconnect() {
 	logger.Info("reconnect with: " + client.addr)
 	_ = client.conn.Close() // ignore possible errors from repeated closes
@@ -119,19 +121,21 @@ func (client *Client) reconnect() {
 	go client.handleRead()
 }
 
+// 定时发送心跳检测，保持连接活跃
 func (client *Client) heartbeat() {
 	for range client.ticker.C {
 		client.doHeartbeat()
 	}
 }
 
+// 处理写操作，发送请求数据到服务器
 func (client *Client) handleWrite() {
 	for req := range client.pendingReqs {
 		client.doRequest(req)
 	}
 }
 
-// Send sends a request to redis server
+// 发送请求到Redis服务器
 func (client *Client) Send(args [][]byte) redis.Reply {
 	if atomic.LoadInt32(&client.status) != running {
 		return protocol.MakeErrReply("client closed")
@@ -208,6 +212,7 @@ func (client *Client) finishRequest(reply redis.Reply) {
 	}
 }
 
+// 读取响应数据
 func (client *Client) handleRead() {
 	ch := parser.ParseStream(client.conn)
 	for payload := range ch {

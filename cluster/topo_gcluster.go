@@ -2,12 +2,13 @@ package cluster
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/hdt3213/godis/aof"
 	"github.com/hdt3213/godis/interface/redis"
 	"github.com/hdt3213/godis/lib/logger"
 	"github.com/hdt3213/godis/redis/protocol"
-	"strconv"
-	"strings"
 )
 
 func init() {
