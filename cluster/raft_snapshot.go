@@ -3,10 +3,11 @@ package cluster
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hdt3213/godis/redis/protocol"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/hdt3213/godis/redis/protocol"
 )
 
 // marshalSlotIds serializes slot ids
@@ -28,7 +29,7 @@ func marshalSlotIds(slots []*Slot) []string {
 			} else { // discrete number
 				scopes = append(scopes, []uint32{slot.ID})
 			}
-		} else {                                                 // within a scope
+		} else { // within a scope
 			if i == len(slots)-1 || slots[i+1].ID != slot.ID+1 { // reach end or not continuous, stop current scope
 				scope[1] = slot.ID
 				scopes = append(scopes, []uint32{scope[0], scope[1]})

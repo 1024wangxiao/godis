@@ -2,15 +2,16 @@ package cluster
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/hdt3213/godis/database"
 	"github.com/hdt3213/godis/interface/redis"
 	"github.com/hdt3213/godis/lib/logger"
 	"github.com/hdt3213/godis/lib/timewheel"
 	"github.com/hdt3213/godis/redis/protocol"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 )
 
 // prepareFunc executed after related key locked, and use additional logic to determine whether the transaction can be committed

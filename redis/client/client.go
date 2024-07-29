@@ -36,7 +36,7 @@ type Client struct {
 
 // 请求结构定义
 type request struct {
-	id        uint64
+	id        uint64      // 请求id
 	args      [][]byte    // 请求参数
 	reply     redis.Reply // 响应
 	heartbeat bool        // 是否为心跳请求

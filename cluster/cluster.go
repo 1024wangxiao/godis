@@ -79,9 +79,9 @@ var allowFastTransaction = true // 如果事务只涉及一个节点，就直接
 // MakeCluster 创建并启动一个集群节点
 func MakeCluster() *Cluster {
 	cluster := &Cluster{
-		self:          config.Properties.Self,                            // 当前节点的标识
+		self:          config.Properties.Self,                            // 当前节点的标识，从配置文件读入
 		addr:          config.Properties.AnnounceAddress(),               // 当前节点的公告地址
-		db:            database2.NewStandaloneServer(),                   // 创建独立服务器实例作为数据库
+		db:            database2.NewStandaloneServer(),                   // 创建独立服务器实例作为数据库，单节点的db
 		transactions:  dict.MakeSimple(),                                 // 初始化事务字典
 		idGenerator:   idgenerator.MakeGenerator(config.Properties.Self), // 初始化 ID 生成器
 		clientFactory: newDefaultClientFactory(),                         // 初始化客户端工厂

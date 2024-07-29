@@ -1,8 +1,9 @@
 package cluster
 
 import (
-	"github.com/hdt3213/godis/interface/redis"
 	"strings"
+
+	"github.com/hdt3213/godis/interface/redis"
 )
 
 // CmdLine is alias for [][]byte, represents a command line

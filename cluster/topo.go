@@ -2,43 +2,45 @@ package cluster
 
 import (
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/hdt3213/godis/database"
 	"github.com/hdt3213/godis/lib/logger"
 	"github.com/hdt3213/godis/lib/utils"
 	"github.com/hdt3213/godis/redis/connection"
 	"github.com/hdt3213/godis/redis/protocol"
-	"strconv"
-	"time"
 )
 
+// startAsSeed 初始化集群的种子节点，设置所有槽的初始状态
 func (cluster *Cluster) startAsSeed(listenAddr string) protocol.ErrorReply {
-	err := cluster.topology.StartAsSeed(listenAddr)
+	err := cluster.topology.StartAsSeed(listenAddr) // 启动种子节点
 	if err != nil {
 		return err
 	}
 	for i := 0; i < slotCount; i++ {
-		cluster.initSlot(uint32(i), slotStateHost)
+		cluster.initSlot(uint32(i), slotStateHost) // 初始化所有槽
 	}
 	return nil
 }
 
-// Join send `gcluster join` to node in cluster to join
+// Join 将当前节点加入到已存在的集群中
 func (cluster *Cluster) Join(seed string) protocol.ErrorReply {
-	err := cluster.topology.Join(seed)
+	err := cluster.topology.Join(seed) // 发送加入请求到集群的种子节点
 	if err != nil {
 		return nil
 	}
-	/* STEP3: asynchronous migrating slots */
+	// 异步启动槽迁移
 	go func() {
-		time.Sleep(time.Second) // let the cluster started
-		cluster.reBalance()
+		time.Sleep(time.Second) // 延迟确保集群启动完成
+		cluster.reBalance()     // 重新平衡槽分配
 	}()
 	return nil
 }
 
 var errConfigFileNotExist = protocol.MakeErrReply("cluster config file not exist")
 
-// LoadConfig try to load cluster-config-file and re-join the cluster
+// LoadConfig 加载集群配置文件并尝试重新加入集群
 func (cluster *Cluster) LoadConfig() protocol.ErrorReply {
 	err := cluster.topology.LoadConfigFile()
 	if err != nil {
@@ -50,11 +52,12 @@ func (cluster *Cluster) LoadConfig() protocol.ErrorReply {
 		return protocol.MakeErrReply("ERR self node info not found")
 	}
 	for _, slot := range selfNode.Slots {
-		cluster.initSlot(slot.ID, slotStateHost)
+		cluster.initSlot(slot.ID, slotStateHost) // 重新初始化节点的槽
 	}
 	return nil
 }
 
+// reBalance 重新平衡集群中的槽
 func (cluster *Cluster) reBalance() {
 	nodes := cluster.topology.GetNodes()
 	var slotIDs []uint32
@@ -70,7 +73,7 @@ func (cluster *Cluster) reBalance() {
 			logger.Errorf("get client of %s failed: %v", node.Addr, err)
 			continue
 		}
-		resp := peerCli.Send(reqDonateCmdLine)
+		resp := peerCli.Send(reqDonateCmdLine) // 请求其他节点捐赠槽
 		payload, ok := resp.(*protocol.MultiBulkReply)
 		if !ok {
 			logger.Errorf("request donate to %s failed: %v", node.Addr, err)
@@ -129,12 +132,11 @@ func (cluster *Cluster) reBalance() {
 	}
 }
 
-// importSlot do migrate slot into current node
-// the pseudo `slot` parameter is used to store slotID and former host node
+// importSlot 执行槽的迁移操作，将槽从旧节点迁移到当前节点
 func (cluster *Cluster) importSlot(slot *Slot) error {
 	node := cluster.topology.GetNode(slot.NodeID)
 
-	/* get migrate stream */
+	/* 获取迁移流 */
 	migrateCmdLine := utils.ToCmdLine(
 		"gcluster", "migrate", strconv.Itoa(int(slot.ID)))
 	migrateStream, err := cluster.clientFactory.NewStream(node.Addr, migrateCmdLine)
@@ -145,7 +147,7 @@ func (cluster *Cluster) importSlot(slot *Slot) error {
 
 	fakeConn := connection.NewFakeConn()
 slotLoop:
-	for proto := range migrateStream.Stream() {
+	for proto := range migrateStream.Stream() { // 处理迁移流中的数据
 		if proto.Err != nil {
 			return fmt.Errorf("set slot %d error: %v", slot.ID, err)
 		}
@@ -176,9 +178,9 @@ slotLoop:
 			return protocol.MakeErrReply(msg)
 		}
 	}
-	cluster.finishSlotImport(slot.ID)
+	cluster.finishSlotImport(slot.ID) // 完成槽的导入
 
-	// finish migration mode
+	// 结束迁移模式
 	peerCli, err := cluster.clientFactory.GetPeerClient(node.Addr)
 	if err != nil {
 		return err

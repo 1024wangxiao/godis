@@ -1,9 +1,10 @@
 package cluster
 
 import (
+	"strconv"
+
 	"github.com/hdt3213/godis/interface/redis"
 	"github.com/hdt3213/godis/redis/protocol"
-	"strconv"
 )
 
 // Del atomically removes given writeKeys from cluster, writeKeys can be distributed on any node
