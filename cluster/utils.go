@@ -34,7 +34,7 @@ func makeArgs(cmd string, args ...string) [][]byte {
 func (cluster *Cluster) groupBy(keys []string) map[string][]string {
 	result := make(map[string][]string)
 	for _, key := range keys {
-		peer := cluster.pickNodeAddrByKey(key)
+		peer := cluster.pickNodeAddrByKey(key) //找到节点地址
 		group, ok := result[peer]
 		if !ok {
 			group = make([]string, 0)
@@ -64,7 +64,7 @@ func (cluster *Cluster) pickNode(slotID uint32) *Node {
 	return node
 }
 
-// pickNodeAddrByKey 根据键找到相应的节点地址
+// pickNodeAddrByKey 根据键找到相应的节点地址,先找到key所在的槽，再调用pickNode找到节点然后返回地址。
 func (cluster *Cluster) pickNodeAddrByKey(key string) string {
 	slotId := getSlot(key)
 	return cluster.pickNode(slotId).Addr

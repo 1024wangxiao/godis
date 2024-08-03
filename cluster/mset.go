@@ -2,10 +2,11 @@ package cluster
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/hdt3213/godis/interface/redis"
 	"github.com/hdt3213/godis/lib/utils"
 	"github.com/hdt3213/godis/redis/protocol"
-	"strconv"
 )
 
 const keyExistsErr = "key exists"

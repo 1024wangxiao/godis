@@ -14,46 +14,47 @@ import (
 	"github.com/hdt3213/godis/redis/protocol"
 )
 
-// prepareFunc executed after related key locked, and use additional logic to determine whether the transaction can be committed
-// For example, prepareMSetNX  will return error to prevent MSetNx transaction from committing if any related key already exists
+// prepareFuncMap 存储不同命令名称到它们的准备函数的映射，用于事务的准备阶段。
 var prepareFuncMap = make(map[string]CmdFunc)
 
+// registerPrepareFunc 用于注册命令和对应的准备函数。
 func registerPrepareFunc(cmdName string, fn CmdFunc) {
 	prepareFuncMap[strings.ToLower(cmdName)] = fn
 }
 
-// Transaction stores state and data for a try-commit-catch distributed transaction
+// Transaction 代表一个分布式事务。
 type Transaction struct {
-	id      string   // transaction id
-	cmdLine [][]byte // cmd cmdLine
-	cluster *Cluster
-	conn    redis.Connection
-	dbIndex int
+	id      string           // 事务 ID
+	cmdLine [][]byte         // 命令行
+	cluster *Cluster         // 集群实例
+	conn    redis.Connection // 客户端连接
+	dbIndex int              // 数据库索引
 
-	writeKeys  []string
-	readKeys   []string
-	keysLocked bool
-	undoLog    []CmdLine
+	writeKeys  []string  // 需要写入的键
+	readKeys   []string  // 需要读取的键
+	keysLocked bool      // 键是否已锁定
+	undoLog    []CmdLine // 撤销日志
 
-	status int8
-	mu     *sync.Mutex
+	status int8        // 事务状态
+	mu     *sync.Mutex // 用于同步的互斥锁
 }
 
 const (
-	maxLockTime       = 3 * time.Second
-	waitBeforeCleanTx = 2 * maxLockTime
+	maxLockTime       = 3 * time.Second // 锁定的最大时间
+	waitBeforeCleanTx = 2 * maxLockTime // 清理事务前的等待时间
 
-	createdStatus    = 0
-	preparedStatus   = 1
-	committedStatus  = 2
-	rolledBackStatus = 3
+	createdStatus    = 0 // 创建状态
+	preparedStatus   = 1 // 准备状态
+	committedStatus  = 2 // 提交状态
+	rolledBackStatus = 3 // 回滚状态
 )
 
+// genTaskKey 生成用于时间轮的事务键
 func genTaskKey(txID string) string {
 	return "tx:" + txID
 }
 
-// NewTransaction creates a try-commit-catch distributed transaction
+// NewTransaction 创建一个新的分布式事务实例。
 func NewTransaction(cluster *Cluster, c redis.Connection, id string, cmdLine [][]byte) *Transaction {
 	return &Transaction{
 		id:      id,
@@ -66,15 +67,15 @@ func NewTransaction(cluster *Cluster, c redis.Connection, id string, cmdLine [][
 	}
 }
 
-// Reentrant
-// invoker should hold tx.mu
+// lockKeys 锁定事务涉及的键。
 func (tx *Transaction) lockKeys() {
 	if !tx.keysLocked {
-		tx.cluster.db.RWLocks(tx.dbIndex, tx.writeKeys, tx.readKeys)
+		tx.cluster.db.RWLocks(tx.dbIndex, tx.writeKeys, tx.readKeys) //读写锁定一组键
 		tx.keysLocked = true
 	}
 }
 
+// unLockKeys 解锁事务涉及的键。
 func (tx *Transaction) unLockKeys() {
 	if tx.keysLocked {
 		tx.cluster.db.RWUnLocks(tx.dbIndex, tx.writeKeys, tx.readKeys)
@@ -82,7 +83,7 @@ func (tx *Transaction) unLockKeys() {
 	}
 }
 
-// t should contain Keys and ID field
+// prepare 准备事务，锁定键，并确定事务是否可以继续。
 func (tx *Transaction) prepare() error {
 	tx.mu.Lock()
 	defer tx.mu.Unlock()
@@ -118,6 +119,7 @@ func (tx *Transaction) prepare() error {
 	return nil
 }
 
+// rollbackWithLock 回滚事务，并确保状态不变。
 func (tx *Transaction) rollbackWithLock() error {
 	curStatus := tx.status
 
@@ -136,7 +138,7 @@ func (tx *Transaction) rollbackWithLock() error {
 	return nil
 }
 
-// cmdLine: Prepare id cmdName args...
+// execPrepare 处理分布式事务的准备阶段。
 func execPrepare(cluster *Cluster, c redis.Connection, cmdLine CmdLine) redis.Reply {
 	if len(cmdLine) < 3 {
 		return protocol.MakeErrReply("ERR wrong number of arguments for 'prepare' command")
@@ -158,7 +160,7 @@ func execPrepare(cluster *Cluster, c redis.Connection, cmdLine CmdLine) redis.Re
 	return &protocol.OkReply{}
 }
 
-// execRollback rollbacks local transaction
+// execRollback 处理事务的回滚。
 func execRollback(cluster *Cluster, c redis.Connection, cmdLine CmdLine) redis.Reply {
 	if len(cmdLine) != 2 {
 		return protocol.MakeErrReply("ERR wrong number of arguments for 'rollback' command")
@@ -187,7 +189,7 @@ func execRollback(cluster *Cluster, c redis.Connection, cmdLine CmdLine) redis.R
 	return protocol.MakeIntReply(1)
 }
 
-// execCommit commits local transaction as a worker when receive execCommit command from coordinator
+// execCommit 处理事务的提交。
 func execCommit(cluster *Cluster, c redis.Connection, cmdLine CmdLine) redis.Reply {
 	if len(cmdLine) != 2 {
 		return protocol.MakeErrReply("ERR wrong number of arguments for 'commit' command")
@@ -224,7 +226,7 @@ func execCommit(cluster *Cluster, c redis.Connection, cmdLine CmdLine) redis.Rep
 	return result
 }
 
-// requestCommit commands all node to commit transaction as coordinator
+// requestCommit 作为协调者请求所有节点提交事务。
 func requestCommit(cluster *Cluster, c redis.Connection, txID int64, groupMap map[string][]string) ([]redis.Reply, protocol.ErrorReply) {
 	var errReply protocol.ErrorReply
 	txIDStr := strconv.FormatInt(txID, 10)
@@ -244,8 +246,7 @@ func requestCommit(cluster *Cluster, c redis.Connection, txID int64, groupMap ma
 	return respList, nil
 }
 
-// requestRollback requests all node rollback transaction as coordinator
-// groupMap: node -> keys
+// requestRollback 作为协调者请求所有节点回滚事务。
 func requestRollback(cluster *Cluster, c redis.Connection, txID int64, groupMap map[string][]string) {
 	txIDStr := strconv.FormatInt(txID, 10)
 	for node := range groupMap {

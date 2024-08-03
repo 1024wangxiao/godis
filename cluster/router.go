@@ -20,7 +20,7 @@ func registerDefaultCmd(name string) {
 	registerCmd(name, defaultFunc)
 }
 
-// relay command to responsible peer, and return its protocol to client
+// 通常情况下我们的命令执行的方式。
 func defaultFunc(cluster *Cluster, c redis.Connection, args [][]byte) redis.Reply {
 	key := string(args[1])
 	slotId := getSlot(key)

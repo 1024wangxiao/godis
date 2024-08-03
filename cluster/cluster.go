@@ -28,11 +28,11 @@ import (
 // it holds part of data and coordinates other nodes to finish transactions
 type Cluster struct {
 	self          string                   // 本节点的标识
-	addr          string                   // 本节点的地址
+	addr          string                   // 当前节点的公告地址
 	db            database.DBEngine        // 数据库引擎接口
 	transactions  *dict.SimpleDict         // 事务字典，映射事务ID到事务对象
 	transactionMu sync.RWMutex             // 事务的读写锁
-	topology      topology                 // 集群的拓扑结构
+	topology      topology                 // 集群的拓扑结构,定义了集群拓扑的操作，包括获取节点信息、设置槽的归属节点等。
 	slotMu        sync.RWMutex             // Slot的读写锁
 	slots         map[uint32]*hostSlot     // Slot映射，每个Slot分配给一个host
 	idGenerator   *idgenerator.IDGenerator // ID生成器

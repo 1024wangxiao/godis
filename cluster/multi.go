@@ -1,12 +1,13 @@
 package cluster
 
 import (
+	"strconv"
+
 	"github.com/hdt3213/godis/database"
 	"github.com/hdt3213/godis/interface/redis"
 	"github.com/hdt3213/godis/lib/utils"
 	"github.com/hdt3213/godis/redis/connection"
 	"github.com/hdt3213/godis/redis/protocol"
-	"strconv"
 )
 
 const relayMulti = "multi_"
