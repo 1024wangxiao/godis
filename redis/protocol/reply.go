@@ -2,8 +2,9 @@ package protocol
 
 import (
 	"bytes"
-	"github.com/hdt3213/godis/interface/redis"
 	"strconv"
+
+	"github.com/hdt3213/godis/interface/redis"
 )
 
 var (

@@ -11,7 +11,7 @@ var cmdTable = make(map[string]*command) //存储我们的命令的map，key：�
 
 type command struct {
 	name     string   //指令名称
-	executor ExecFunc //没一个command里面有一个执行方法
+	executor ExecFunc //每一个command里面有一个执行方法
 	// prepare returns related keys command
 	prepare PreFunc
 	// undo generates undo-log before command actually executed, in case the command needs to be rolled back

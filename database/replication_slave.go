@@ -18,11 +18,11 @@ import (
 	"github.com/hdt3213/godis/config"
 	"github.com/hdt3213/godis/interface/redis"
 	"github.com/hdt3213/godis/lib/logger"
-	rdb "github.com/hdt3213/rdb/parser"
 	"github.com/hdt3213/godis/lib/utils"
 	"github.com/hdt3213/godis/redis/connection"
 	"github.com/hdt3213/godis/redis/parser"
 	"github.com/hdt3213/godis/redis/protocol"
+	rdb "github.com/hdt3213/rdb/parser"
 )
 
 const (
@@ -30,6 +30,7 @@ const (
 	slaveRole
 )
 
+// 保存了从节点的状态，包括主节点的连接信息、复制偏移量等。
 type slaveStatus struct {
 	mutex  sync.Mutex
 	ctx    context.Context
@@ -45,7 +46,7 @@ type slaveStatus struct {
 
 	masterConn   net.Conn
 	masterChan   <-chan *parser.Payload
-	replId       string
+	replId       string //保存的是主节点的runID
 	replOffset   int64
 	lastRecvTime time.Time
 	running      sync.WaitGroup
