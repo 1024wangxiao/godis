@@ -25,9 +25,9 @@ type ServerProperties struct {
 	// for Public configuration
 	RunID             string `cfg:"runid"` // runID always different at every exec.
 	Bind              string `cfg:"bind"`
-	Port              int    `cfg:"port"`
+	Port              int    `cfg:"port"` //当前节点的端口
 	Dir               string `cfg:"dir"`
-	AnnounceHost      string `cfg:"announce-host"`
+	AnnounceHost      string `cfg:"announce-host"` //当前节点的ip地址
 	AppendOnly        bool   `cfg:"appendonly"`
 	AppendFilename    string `cfg:"appendfilename"`
 	AppendFsync       string `cfg:"appendfsync"`
@@ -37,12 +37,12 @@ type ServerProperties struct {
 	Databases         int    `cfg:"databases"`
 	RDBFilename       string `cfg:"dbfilename"`
 	MasterAuth        string `cfg:"masterauth"`
-	SlaveAnnouncePort int    `cfg:"slave-announce-port"`
-	SlaveAnnounceIP   string `cfg:"slave-announce-ip"`
+	SlaveAnnouncePort int    `cfg:"slave-announce-port"` //从节点端口
+	SlaveAnnounceIP   string `cfg:"slave-announce-ip"`   //从节点的ip
 	ReplTimeout       int    `cfg:"repl-timeout"`
 	ClusterEnable     bool   `cfg:"cluster-enable"`
-	ClusterAsSeed     bool   `cfg:"cluster-as-seed"`
-	ClusterSeed       string `cfg:"cluster-seed"`
+	ClusterAsSeed     bool   `cfg:"cluster-as-seed"` //设置为yes表示当前节点是中子节点
+	ClusterSeed       string `cfg:"cluster-seed"`    //指定一个
 	ClusterConfigFile string `cfg:"cluster-config-file"`
 
 	// for cluster mode configuration

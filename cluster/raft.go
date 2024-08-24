@@ -6,13 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hdt3213/godis/config"
-	"github.com/hdt3213/godis/datastruct/lock"
-	"github.com/hdt3213/godis/interface/redis"
-	"github.com/hdt3213/godis/lib/logger"
-	"github.com/hdt3213/godis/lib/utils"
-	"github.com/hdt3213/godis/redis/connection"
-	"github.com/hdt3213/godis/redis/protocol"
 	"math/rand"
 	"os"
 	"sort"
@@ -20,6 +13,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/hdt3213/godis/config"
+	"github.com/hdt3213/godis/datastruct/lock"
+	"github.com/hdt3213/godis/interface/redis"
+	"github.com/hdt3213/godis/lib/logger"
+	"github.com/hdt3213/godis/lib/utils"
+	"github.com/hdt3213/godis/redis/connection"
+	"github.com/hdt3213/godis/redis/protocol"
 )
 
 const slotCount int = 16384

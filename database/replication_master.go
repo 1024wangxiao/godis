@@ -37,7 +37,7 @@ const (
 	slaveCapacityPsync2
 )
 
-// slaveClient stores slave status in the view of master
+// 保存了从节点的状态，包括连接信息、偏移量等。
 type slaveClient struct {
 	conn         redis.Connection
 	state        uint8
@@ -50,9 +50,9 @@ type slaveClient struct {
 
 // aofListener is currently only responsible for updating the backlog
 type replBacklog struct {
-	buf           []byte
-	beginOffset   int64
-	currentOffset int64
+	buf           []byte //缓冲区
+	beginOffset   int64  //开始的偏移量
+	currentOffset int64  //当前偏移量
 }
 
 func (backlog *replBacklog) appendBytes(bin []byte) {
@@ -73,11 +73,13 @@ func (backlog *replBacklog) isValidOffset(offset int64) bool {
 	return offset >= backlog.beginOffset && offset < backlog.currentOffset
 }
 
+// 保存了主节点的状态，包括从节点列表、复制 ID、后台保存状态等。
 type masterStatus struct {
-	mu           sync.RWMutex
-	replId       string
-	backlog      *replBacklog
-	slaveMap     map[redis.Connection]*slaveClient
+	mu      sync.RWMutex // 互斥锁，保证状态更新的线程安全
+	replId  string       //复制id，标识唯一
+	backlog *replBacklog //主要用于RDB文件生成和传输期间，主服务器会记录所有接收到的写命令，RDB传输完毕，主节点会把backlog发给从节点
+	//从节点执行命令，保证数据一致性。
+	slaveMap     map[redis.Connection]*slaveClient //记录当前主节点下面有哪些从节点，从节点用slaveClient结构体管理。
 	waitSlaves   map[*slaveClient]struct{}
 	onlineSlaves map[*slaveClient]struct{}
 	bgSaveState  uint8
@@ -86,7 +88,7 @@ type masterStatus struct {
 	rewriting    atomic.Boolean
 }
 
-// bgSaveForReplication does bg-save and send rdb to waiting slaves
+// 处理后台 RDB 快照的生成，用于复制。
 func (server *Server) bgSaveForReplication() {
 	go func() {
 		defer func() {
@@ -180,7 +182,7 @@ func (server *Server) rewriteRDB() error {
 	return nil
 }
 
-// masterFullReSyncWithSlave send replication header, rdb file and all backlogs to slave
+// 向从节点发送完整的 RDB 快照和 AOF 日志，进行全量同步。
 func (server *Server) masterFullReSyncWithSlave(slave *slaveClient) error {
 	// write replication header
 	header := "+FULLRESYNC " + server.masterStatus.replId + " " +
@@ -223,6 +225,7 @@ func (server *Server) masterFullReSyncWithSlave(slave *slaveClient) error {
 
 var cannotPartialSync = errors.New("cannot do partial sync")
 
+// 尝试与从节点进行部分同步。
 func (server *Server) masterTryPartialSyncWithSlave(slave *slaveClient, replId string, slaveOffset int64) error {
 	server.masterStatus.mu.RLock()
 	if replId != server.masterStatus.replId {
@@ -253,8 +256,7 @@ func (server *Server) masterTryPartialSyncWithSlave(slave *slaveClient, replId s
 	return nil
 }
 
-// masterSendUpdatesToSlave only sends data to online slaves after bgSave is finished
-// if bgSave is running, updates will be sent after the saving finished
+// 向在线的从节点发送更新。
 func (server *Server) masterSendUpdatesToSlave() error {
 	onlineSlaves := make(map[*slaveClient]struct{})
 	server.masterStatus.mu.RLock()

@@ -1,11 +1,12 @@
 package pubsub
 
 import (
+	"strconv"
+
 	"github.com/hdt3213/godis/datastruct/list"
 	"github.com/hdt3213/godis/interface/redis"
 	"github.com/hdt3213/godis/lib/utils"
 	"github.com/hdt3213/godis/redis/protocol"
-	"strconv"
 )
 
 var (
@@ -15,6 +16,7 @@ var (
 	unSubscribeNothing = []byte("*3\r\n$11\r\nunsubscribe\r\n$-1\n:0\r\n")
 )
 
+// 用于创建符合 Redis 协议的消息格式：
 func makeMsg(t string, channel string, code int64) []byte {
 	return []byte("*3\r\n$" + strconv.FormatInt(int64(len(t)), 10) + protocol.CRLF + t + protocol.CRLF +
 		"$" + strconv.FormatInt(int64(len(channel)), 10) + protocol.CRLF + channel + protocol.CRLF +
@@ -70,7 +72,7 @@ func unsubscribe0(hub *Hub, channel string, client redis.Connection) bool {
 	return false
 }
 
-// Subscribe puts the given connection into the given channel
+// 函数将客户端添加到一个或多个频道的订阅列表中：
 func Subscribe(hub *Hub, c redis.Connection, args [][]byte) redis.Reply {
 	channels := make([]string, len(args))
 	for i, b := range args {
@@ -88,7 +90,7 @@ func Subscribe(hub *Hub, c redis.Connection, args [][]byte) redis.Reply {
 	return &protocol.NoReply{}
 }
 
-// UnsubscribeAll removes the given connection from all subscribing channel
+// UnsubscribeAll 函数将客户端从所有频道的订阅列表中移除：
 func UnsubscribeAll(hub *Hub, c redis.Connection) {
 	channels := c.GetChannels()
 
@@ -101,7 +103,7 @@ func UnsubscribeAll(hub *Hub, c redis.Connection) {
 
 }
 
-// UnSubscribe removes the given connection from the given channel
+// 函数将客户端从指定频道的订阅列表中移除：
 func UnSubscribe(db *Hub, c redis.Connection, args [][]byte) redis.Reply {
 	var channels []string
 	if len(args) > 0 {
@@ -129,7 +131,7 @@ func UnSubscribe(db *Hub, c redis.Connection, args [][]byte) redis.Reply {
 	return &protocol.NoReply{}
 }
 
-// Publish send msg to all subscribing client
+// 负责将消息发送给订阅了指定频道的所有客户端：
 func Publish(hub *Hub, args [][]byte) redis.Reply {
 	if len(args) != 2 {
 		return &protocol.ArgNumErrReply{Cmd: "publish"}

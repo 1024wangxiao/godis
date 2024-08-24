@@ -1,9 +1,10 @@
 package database
 
 import (
+	"strconv"
+
 	"github.com/hdt3213/godis/aof"
 	"github.com/hdt3213/godis/lib/utils"
-	"strconv"
 )
 
 func readFirstKey(args [][]byte) ([]string, []string) {
@@ -12,11 +13,13 @@ func readFirstKey(args [][]byte) ([]string, []string) {
 	return nil, []string{key}
 }
 
+// 该命令第一个键是wtite键，read键为nil
 func writeFirstKey(args [][]byte) ([]string, []string) {
 	key := string(args[0])
 	return []string{key}, nil
 }
 
+// 该命令后面中的参数都是write键
 func writeAllKeys(args [][]byte) ([]string, []string) {
 	keys := make([]string, len(args))
 	for i, v := range args {
